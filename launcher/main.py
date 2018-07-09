@@ -33,7 +33,9 @@ class bolt_launcher(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
-        self.resize(620, 350)
+        self.resize(300, 240)
         # Create window attributes
         #self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         #self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool)
+
+
