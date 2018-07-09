@@ -18,7 +18,7 @@ def show():
     boldLauncherWindow.show(dockable=True, floating=True)
 
 class bolt_launcher(MayaQWidgetDockableMixin, QtWidgets.QDialog):
-    '''Instance a module-menu that loads all of the modules from the Alfred.Modules folder'''
+ste    '''Instance a module-menu that loads all of the modules from the Alfred.Modules folder'''
     def __init__(self, parent=None):
         super(bolt_launcher, self).__init__(parent)
         try: boldLauncherWindow.close()
