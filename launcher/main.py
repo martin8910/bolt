@@ -378,7 +378,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 if type(value) == str or type(value) == unicode:
                     # Special case for folders
                     if "file" in key:
-
                         valueObject = QtWidgets.QLineEdit()
                         valueObject.setText(value)
 
@@ -392,7 +391,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
                         # Add connection
                         button.clicked.connect(button.add_path)
-                    elif "path" in key:
+                    elif "path" in key or "dir" in key:
                         valueObject = QtWidgets.QLineEdit()
                         valueObject.setText(value)
 
@@ -541,7 +540,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
 
             # Create card
-            item = qtCore.widgets.create_simple_card(name=function.__name__, layout=self.ui.functionList, info=docInfo)
+            item = qtCore.widgets.create_simple_card(title=function.__name__, layout=self.ui.functionList, info=docInfo)
             # Set data for header
             item.setData(100, moduleName)
 
