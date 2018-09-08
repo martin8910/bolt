@@ -15,5 +15,3 @@ def create_preference_file():
     file_path = prefs_location _+ "bolt_preferences.json"
     with open(file_path, 'w') as outfile:
         json.dump(data, outfile, indent=3)
-
-def preference_create_dialog():

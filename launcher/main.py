@@ -540,7 +540,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
 
             # Create card
-            item = qtCore.widgets.create_simple_card(title=function.__name__, layout=self.ui.functionList, info=docInfo)
+            item = qtCore.widgets.create_simple_card(title=function.__name__, height=20,layout=self.ui.functionList, info=docInfo)
             # Set data for header
             item.setData(100, moduleName)
 
