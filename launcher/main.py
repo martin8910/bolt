@@ -256,7 +256,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 card = item.data(109)
 
                 # Continue if not a header
-                if "cardUI" in str(type(card)):
+                if "card_simple_ui" in str(type(card)):
                     if filterQuery not in card.getTitle().lower():
                         item.setHidden(True)
                     else:
