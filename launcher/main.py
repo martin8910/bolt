@@ -239,31 +239,44 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         listWidget = self.ui.functionList
 
         # Get filter name
-        filterQuery = self.ui.filterInput.text().lower()
+        filterQuery = self.ui.filterInput.text().lower().replace(" ", "")
 
         filterList = []
         headerNames = []
+        header_items = []
         for number in xrange(listWidget.count()):
             # Get item
             item = listWidget.item(number)
 
-            # Unhide first
+            # Unhide all first
             item.setHidden(False)
 
+            # Check that any result
             if len(filterQuery) >= 1:
 
-                # Get card
+                # Get card content
                 card = item.data(109)
 
                 # Continue if not a header
                 if "card_simple_ui" in str(type(card)):
-                    if filterQuery not in card.getTitle().lower():
+                    if filterQuery not in card.getTitle().lower().replace(" ", ""):
                         item.setHidden(True)
                     else:
                         filterList.append(item)
+                        # Add name of headers to global
                         headerNames.append(item.data(100))
                 else:
-                    item.setHidden(False)
+                    # If header
+                    item.setHidden(True)
+                    header_items.append(item)
+
+        for item in header_items:
+            # Get card content
+            card = item.data(109)
+
+            if card.get_title().lower() in headerNames:
+                item.setHidden(False)
+
 
         # Set selected
         if len(filterList) != 0:
@@ -278,7 +291,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             #     if "headerUI" in str(type(card)):
             #         if card.get_title() in headerNames:
             #             item.setHidden(False)
-
 
     def add_attributes(self):
         # Define attribute layout
@@ -563,7 +575,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     pass
 
         return functionName
-
 
     def get_arguments(self):
         self.functionDictionary = []
