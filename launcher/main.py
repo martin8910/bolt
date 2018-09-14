@@ -28,7 +28,7 @@ def show():
     bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
     # Show the window
     bolt_launcher_instance.show(dockable=True, floating=True)
-    qtCore.centerWidgetOnScreen(bolt_launcher_instance)
+    #
 
 
 class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
@@ -39,6 +39,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         except: pass
 
         self.functionDictionary = []
+        self.attribute_objects = []
+        self.window_state = "search"
+        self.reset_text = True
 
         # UI loading
         self.ui = qtCore.qtUiLoader("{}launcher_interface.ui".format(relativePath))
@@ -63,25 +66,17 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         # Button connections
         self.ui.runButton.clicked.connect(self.run)
-        #self.ui.functionList.itemSelectionChanged.connect(self.add_attributes)
         self.ui.functionList.itemPressed.connect(self.add_attributes)
         self.ui.reloadButton.clicked.connect(self.load)
         self.ui.resetAssignment.clicked.connect(self.add_attributes)
-        self.ui.filterInput.textChanged.connect(self.filter_functions)
         self.ui.back_button.clicked.connect(self.change_state)
 
         self.ui.back_button.setHidden(True)
 
+        self.setFocus()
+
 
         # Add keyboard shortcuts
-        #QtWidgets.QShortcut(QtGui.QKeySequence("Down"), self.ui.filterInput, lambda: self.changeListIndex(1))
-        #QtWidgets.QShortcut(QtGui.QKeySequence("Up"), self.ui.filterInput, lambda: self.changeListIndex(-1))
-        #QtWidgets.QShortcut(QtGui.QKeySequence("Right"), self.ui.filterInput, lambda: self.get_properties)
-        #QtWidgets.QShortcut(QtGui.QKeySequence("Left"), self.ui.filterInput, lambda: self.show_search)
-        #QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_F), self, self.show_search)
-        #QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Left), self, self.show_search)
-        #QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Right), self, self.get_properties)
-
         self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "settings.svg"), size=(20, 20)))
         self.ui.reloadButton.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "reload.svg"), size=(20, 20)))
 
@@ -96,15 +91,42 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.add_attributes()
             print "Right Key triggered"
         elif key == QtCore.Qt.Key_Down:
-            self.ui.functionList.blockSignals(True)
-            self.changeListIndex(1)
-            self.ui.functionList.blockSignals(False)
+            if self.ui.properties_frame.size().width() == 0:
+                self.ui.functionList.blockSignals(True)
+                self.changeListIndex(1)
+                self.ui.functionList.blockSignals(False)
+                self.reset_text = True
+            else:
+                print "Traverse properties frame down"
         elif key == QtCore.Qt.Key_Up:
-            self.ui.functionList.blockSignals(True)
-            self.changeListIndex(-1)
-            self.ui.functionList.blockSignals(False)
+            if self.ui.properties_frame.size().width() == 0:
+                self.ui.functionList.blockSignals(True)
+                self.changeListIndex(-1)
+                self.ui.functionList.blockSignals(False)
+                self.reset_text = True
+            else:
+                print "Traverse properties frame up"
+        elif key == QtCore.Qt.Key_Backtab or key == QtCore.Qt.Key_Backspace:
+            print "You pressed back-tab"
+            self.ui.filterInput.setText("")
+            self.filter_functions()
+        elif key == QtCore.Qt.Key_Return or key == QtCore.Qt.Key_Enter:
+            print "You pressed enter key"
+            if self.ui.properties_frame.size().width() != 0:
+                self.run()
+            else:
+                self.add_attributes()
+
+        elif key == QtCore.Qt.Key_Escape:
+            self.close()
         else:
-            #QtWidgets.keyPressEvent(self, event)
+            if self.ui.properties_frame.size().width() == 0:
+                if self.reset_text:
+                    self.ui.filterInput.setText(event.text())
+                    self.reset_text = False
+                else:
+                    self.ui.filterInput.setText(self.ui.filterInput.text() + event.text())
+                self.filter_functions()
             return event
 
     def show_search(self):
@@ -115,10 +137,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.ui.filterInput.setText("")
             self.ui.filterInput.setFocus()
 
-
     def change_state(self):
-        if self.ui.properties_frame.size().width() == 0:
-
+        if self.window_state == "search":
+            self.window_state = "attributes"
             # Get current size
             outItem = self.ui.search_frame
             inItem = self.ui.properties_frame
@@ -127,7 +148,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             qtCore.propertyAnimation(start=[0, 30], end=[30, 30], duration=600, object=self.ui.back_button, property="minimumSize", mode="OutExpo")
             qtCore.propertyAnimation(start=[0, 30], end=[200, 200], duration=600, object=self.ui.back_button, property="maximumSize", mode="OutExpo")
         else:
-
+            self.window_state = "search"
             outItem = self.ui.properties_frame
             inItem = self.ui.search_frame
 
@@ -141,14 +162,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         qtCore.animateWidgetSize(inItem, start=(0, height), end=(width, height), duration=600, attributelist=("maximumSize", "minimumSize"), expanding=True, bounce=False)
 
-
-    def get_properties(self):
-        print "Get properties from the selected if it exists"
-
     def changeListIndex(self, input):
         # Get current index from item
         currentItem = self.ui.functionList.currentItem()
-
         self.ui.functionList.blockSignals(True)
 
         if self.ui.functionList.count() >= 1:
@@ -163,8 +179,32 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     # Last item, set to first again
                     newItem = self.ui.functionList.item(0)
                 else:
-                    # if (currentNumber + input) == self.ui.listWidget.count():
-                    newItem = self.ui.functionList.item(currentNumber + input)
+                    hidden = True
+                    while hidden == True:
+                        newItem = self.ui.functionList.item(currentNumber + input)
+                        hidden = newItem.isHidden()
+                        if hidden == True:
+                            #input = input + input
+                            if input >= 1:
+                                input = input + 1
+                            else:
+                                input = input - 1
+                        else:
+                            # Check that not a header
+                            card = newItem.data(109)
+                            if "card_simple_ui" in str(type(card)):
+                                continue
+                            else:
+                                hidden = True
+                                if input >= 1:
+                                    input = input + 1
+                                else:
+                                    input = input - 1
+                                # if input == 1:
+                                #     input = input + input
+                                # else:
+                                #     input = input - 1
+
                     # Check if new item is not a header
             if ((currentNumber + input) == -1):
                 # Select the last item from the last item (count)
@@ -182,7 +222,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.get_arguments()
 
         self.filter_functions()
-
 
     def run(self):
         '''Exexute from current existed function'''
@@ -233,7 +272,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
     def filter_functions(self):
         # Switch back to search ui if not active
-        if self.ui.properties_frame.size().width() != 0:
+        if self.window_state != "search":
             self.change_state()
 
         listWidget = self.ui.functionList
@@ -283,21 +322,14 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.ui.functionList.blockSignals(True)
             self.ui.functionList.setCurrentItem(filterList[0])
             self.ui.functionList.blockSignals(False)
-            # Unhide header
-
-            # for number in xrange(listWidget.count()):
-            #     item = listWidget.item(number)
-            #     card = item.data(109)
-            #     if "headerUI" in str(type(card)):
-            #         if card.get_title() in headerNames:
-            #             item.setHidden(False)
-
     def add_attributes(self):
         # Define attribute layout
         attributeLayout = self.ui.attributeBox.children()[0]
 
         # Clear layout
         qtCore.clearLayout(attributeLayout)
+        self.attribute_objects = []
+
 
         self.change_state()
 
@@ -358,6 +390,8 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             line = qtCore.QHLine()
             attributeLayout.addWidget(line)
 
+            last_tab_object = None
+
             #print "----- Getting attributes for '{}' -----".format(functionName)
             for key, value in function[3].iteritems():
 
@@ -380,7 +414,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 # Create Label (formated nicely using re.sub and cap)
                 textLabel = QtWidgets.QLabel(functionName.replace("_", " ") + ":")
                 textLabel.setStyleSheet("color: rgb(200,200,200)")
-                textLabel.setMinimumSize(60, 20)
+                textLabel.setMinimumSize(100, 20)
                 layout.addWidget(textLabel)
 
                 # Variable for items to add to the layout
@@ -423,6 +457,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
                 elif type(value) == bool:
                     valueObject = QtWidgets.QCheckBox()
+
                     # Set value
                     if value == True:
                         valueObject.setChecked(True)
@@ -464,6 +499,11 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 for item in valueObjects[::-1]:
                     layout.addWidget(item)
 
+                print "FROM:", last_tab_object
+                print "TO:", valueObjects[0]
+                self.setTabOrder(last_tab_object, valueObjects[0])
+                last_tab_object = valueObjects[0]
+
                 # Add to layout
                 attributeLayout.addLayout(layout)
 
@@ -472,9 +512,11 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
                 # Feed label as property
                 valueObject.setProperty("label", textLabel)
-
-                # Add to global input-list
                 valueObject.setObjectName(key)
+
+                # Add to global object-list
+
+                print "ADDING:", valueObject.objectName()
                 self.arguments.append(valueObject)
 
                 # Add separator
@@ -482,15 +524,22 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 #line.set_style("Plane")
                 #attributeLayout.addWidget(line)
 
+                self.attribute_objects.append(valueObject)
+
             # Add spacer in the end
             verticalSpacer = QtWidgets.QSpacerItem(20, 1000, QtWidgets.QSizePolicy.Expanding,QtWidgets.QSizePolicy.Expanding)
             attributeLayout.addItem(verticalSpacer)
+
 
             # Add text with info for requirements
             if extraInfo["required"] != None:
                 textLabel = QtWidgets.QLabel("* This argument is required for this function to run")
                 textLabel.setStyleSheet("color: rgb(250,250,250,100)")
                 attributeLayout.addWidget(textLabel)
+
+        # Set focus
+        print "SET FOCUS:", self.attribute_objects[0]
+        self.attribute_objects[0].setFocus()
 
     def get_functions(self):
         # Define old selection
