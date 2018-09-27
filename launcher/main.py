@@ -1,4 +1,4 @@
-__version__ = "0.4"
+__version__ = "0.5"
 __author__ = "Martin Gunnarsson (hello@deerstranger.com)"
 
 import qtCore
@@ -68,13 +68,12 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.ui.runButton.clicked.connect(self.run)
         self.ui.functionList.itemPressed.connect(self.add_attributes)
         self.ui.reloadButton.clicked.connect(self.load)
-        self.ui.resetAssignment.clicked.connect(self.add_attributes)
+        self.ui.resetAssignment.clicked.connect(lambda: self.add_attributes(change_state=False))
         self.ui.back_button.clicked.connect(self.change_state)
 
         self.ui.back_button.setHidden(True)
 
         self.setFocus()
-
 
         # Add keyboard shortcuts
         self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "settings.svg"), size=(20, 20)))
@@ -322,7 +321,8 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.ui.functionList.blockSignals(True)
             self.ui.functionList.setCurrentItem(filterList[0])
             self.ui.functionList.blockSignals(False)
-    def add_attributes(self):
+
+    def add_attributes(self, change_state=True):
         # Define attribute layout
         attributeLayout = self.ui.attributeBox.children()[0]
 
@@ -330,8 +330,8 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         qtCore.clearLayout(attributeLayout)
         self.attribute_objects = []
 
-
-        self.change_state()
+        if change_state:
+            self.change_state()
 
         # Create a layout for every input found
         if len(self.functionDictionary) >= 1:
@@ -392,12 +392,10 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
             last_tab_object = None
 
-            #print "----- Getting attributes for '{}' -----".format(functionName)
             for key, value in function[3].iteritems():
 
                 # Create layout
                 layout = QtWidgets.QHBoxLayout()
-
                 functionName = re.sub(r'([A-Z])', r' \1', key).capitalize()
 
                 # Check if this plug is required
@@ -463,11 +461,13 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                         valueObject.setChecked(True)
                 elif type(value) == tuple or type(value) == list:
                     # Extra validation to check the type of the list
+                    print len(value)
                     if len(value) == 3:
                         # Create Vector widget
+                        print "This is a vector input"
                         valueObject = qtCore.vectorInput(widget=self)
                         valueObject.set_values(value[0], value[1], value[2])
-                    if len(value) >= 4:
+                    elif len(value) >= 4:
                         # Create text input for list
                         valueObject = qtCore.vectorInput(widget=self)
                         valueObject.set_values(value[0], value[1], value[2])
@@ -515,8 +515,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 valueObject.setObjectName(key)
 
                 # Add to global object-list
-
-                print "ADDING:", valueObject.objectName()
                 self.arguments.append(valueObject)
 
                 # Add separator
