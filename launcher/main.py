@@ -9,26 +9,56 @@ reload(qtCore.animation)
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin, MayaQDockWidget
 import os, re
 import inspect
+import prefs
+import imp
+import sys
+import pkgutil
 
-# External
-import mayaCore
 
+import glob
 
 relativePath = os.path.dirname(os.path.realpath(__file__)) + os.sep
 parentPath = os.path.abspath(os.path.join(relativePath, os.pardir))
 
-reload(mayaCore)
+
+def load_library(library_path):
+    # Add to sys
+    if library_path not in sys.path:
+        sys.path.append(library_path)
+
+    global base_library
+    global library_name
+
+    full_library_path = library_path + os.sep + "__init__.py"
+    library_name = os.path.basename(library_path)
+
+    base_library = imp.load_source(library_name, full_library_path)
 
 
+if prefs.get_library_path() != None:
+    load_library(prefs.get_library_path())
 
 def show():
     '''Start an instance of the Function-finder UI'''
-    # Launch an instance of the window
-    global bolt_launcher_instance
-    bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
-    # Show the window
-    bolt_launcher_instance.show(dockable=True, floating=True)
-    #
+    # Check preferences state
+    preference_state = prefs.check_prefs_state()
+    if preference_state:
+        library_path = prefs.get_library_path()
+    else:
+        library_path = qtCore.picker_dialog(mode="AnyDirectory", message="Choose a python-library folder")
+        if library_path:
+            prefs.create_preference_file(library_path=library_path)
+            load_library(library_path)
+        else:
+            print "No path provided"
+
+    if library_path:
+
+        # Launch an instance of the window
+        global bolt_launcher_instance
+        bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
+        # Show the window
+        bolt_launcher_instance.show(dockable=True, floating=True)
 
 
 class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
@@ -38,6 +68,8 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         try: bolt_launcher_instance.close()
         except: pass
 
+
+        self.expandingMode = False
         self.functionDictionary = []
         self.attribute_objects = []
         self.window_state = "search"
@@ -46,7 +78,11 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         # UI loading
         self.ui = qtCore.qtUiLoader("{}launcher_interface.ui".format(relativePath))
 
-        self.ui.properties_frame.setMaximumWidth(0)
+        if self.expandingMode:
+            self.ui.properties_frame.setMaximumWidth(0)
+            self.resize(350, 450)
+        else:
+            self.resize(500, 450)
 
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.ui)
@@ -54,7 +90,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
-        self.resize(350, 450)
+
 
         # Window attributes
         self.dockedMode = False
@@ -70,63 +106,85 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.ui.reloadButton.clicked.connect(self.load)
         self.ui.resetAssignment.clicked.connect(lambda: self.add_attributes(change_state=False))
         self.ui.back_button.clicked.connect(self.change_state)
+        self.ui.filterInput.textChanged.connect(self.filter_functions)
+        self.ui.settings_button.clicked.connect(self.switch_exspanding_state)
+
 
         self.ui.back_button.setHidden(True)
 
         self.setFocus()
 
+        #Rightclick menu
+
         # Add keyboard shortcuts
-        self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "settings.svg"), size=(20, 20)))
+        if self.expandingMode:
+            self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "exspandOn.svg"), size=(20, 20)))
+        else:
+            self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "exspandOff.svg"), size=(20, 20)))
+
         self.ui.reloadButton.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "reload.svg"), size=(20, 20)))
 
-    def keyPressEvent(self, event):
+    def keyPressEventDISABLED(self, event):
 
         key = event.key()
 
-        if key == QtCore.Qt.Key_Left:
-            print "Left Key triggered"
-            self.show_search()
-        elif key == QtCore.Qt.Key_Right:
-            self.add_attributes()
-            print "Right Key triggered"
-        elif key == QtCore.Qt.Key_Down:
-            if self.ui.properties_frame.size().width() == 0:
-                self.ui.functionList.blockSignals(True)
-                self.changeListIndex(1)
-                self.ui.functionList.blockSignals(False)
-                self.reset_text = True
-            else:
-                print "Traverse properties frame down"
-        elif key == QtCore.Qt.Key_Up:
-            if self.ui.properties_frame.size().width() == 0:
-                self.ui.functionList.blockSignals(True)
-                self.changeListIndex(-1)
-                self.ui.functionList.blockSignals(False)
-                self.reset_text = True
-            else:
-                print "Traverse properties frame up"
-        elif key == QtCore.Qt.Key_Backtab or key == QtCore.Qt.Key_Backspace:
-            print "You pressed back-tab"
-            self.ui.filterInput.setText("")
-            self.filter_functions()
-        elif key == QtCore.Qt.Key_Return or key == QtCore.Qt.Key_Enter:
-            print "You pressed enter key"
-            if self.ui.properties_frame.size().width() != 0:
-                self.run()
-            else:
+        if self.expandingMode:
+            if key == QtCore.Qt.Key_Left:
+                print "Left Key triggered"
+                self.show_search()
+            elif key == QtCore.Qt.Key_Right:
                 self.add_attributes()
-
-        elif key == QtCore.Qt.Key_Escape:
-            self.close()
-        else:
-            if self.ui.properties_frame.size().width() == 0:
-                if self.reset_text:
-                    self.ui.filterInput.setText(event.text())
-                    self.reset_text = False
+                print "Right Key triggered"
+            elif key == QtCore.Qt.Key_Down:
+                if self.ui.properties_frame.size().width() == 0:
+                    self.ui.functionList.blockSignals(True)
+                    self.changeListIndex(1)
+                    self.ui.functionList.blockSignals(False)
+                    self.reset_text = True
                 else:
-                    self.ui.filterInput.setText(self.ui.filterInput.text() + event.text())
-                self.filter_functions()
-            return event
+                    print "Traverse properties frame down"
+            elif key == QtCore.Qt.Key_Up:
+                if self.ui.properties_frame.size().width() == 0:
+                    self.ui.functionList.blockSignals(True)
+                    self.changeListIndex(-1)
+                    self.ui.functionList.blockSignals(False)
+                    self.reset_text = True
+                else:
+                    print "Traverse properties frame up"
+
+            elif key == QtCore.Qt.Key_Return or key == QtCore.Qt.Key_Enter:
+                print "You pressed enter key"
+                if self.ui.properties_frame.size().width() != 0:
+                    self.run()
+                else:
+                    self.add_attributes()
+
+            elif key == QtCore.Qt.Key_Escape:
+                self.close()
+            else:
+                if self.ui.properties_frame.size().width() == 0:
+                    if self.reset_text:
+                        self.ui.filterInput.setText(event.text())
+                        self.reset_text = False
+                    else:
+                        self.ui.filterInput.setText(self.ui.filterInput.text() + event.text())
+                    self.filter_functions()
+                return event
+        else:
+            event.accept()
+            # print "Exspanding off"
+            # if key == QtCore.Qt.Key_Up:
+            #     self.changeListIndex(-1)
+            #     self.add_attributes()
+            # elif key == QtCore.Qt.Key_Down:
+            #     self.changeListIndex(1)
+            #     self.add_attributes()
+
+
+        # elif key == QtCore.Qt.Key_Backtab or key == QtCore.Qt.Key_Backspace:
+        #     print "You pressed back-tab"
+        #     #self.ui.filterInput.setText("")
+        #     #self.filter_functions()
 
     def show_search(self):
 
@@ -136,30 +194,49 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.ui.filterInput.setText("")
             self.ui.filterInput.setFocus()
 
-    def change_state(self):
-        if self.window_state == "search":
-            self.window_state = "attributes"
-            # Get current size
-            outItem = self.ui.search_frame
-            inItem = self.ui.properties_frame
-
-            self.ui.back_button.setHidden(False)
-            qtCore.propertyAnimation(start=[0, 30], end=[30, 30], duration=600, object=self.ui.back_button, property="minimumSize", mode="OutExpo")
-            qtCore.propertyAnimation(start=[0, 30], end=[200, 200], duration=600, object=self.ui.back_button, property="maximumSize", mode="OutExpo")
+    def switch_exspanding_state(self):
+        if self.expandingMode:
+            self.expandingMode = False
+            self.change_state()
+            self.ui.properties_frame.setMaximumWidth(200)
+            icon_name = "exspandOff.svg"
         else:
-            self.window_state = "search"
-            outItem = self.ui.properties_frame
-            inItem = self.ui.search_frame
+            icon_name = "exspandOn.svg"
+            self.expandingMode = True
+            self.ui.properties_frame.setMaximumWidth(0)
 
-            qtCore.propertyAnimation(start=[30, 30], end=[0, 400], duration=600, object=self.ui.back_button,property="minimumSize", mode="OutExpo")
-            qtCore.propertyAnimation(start=[100, 30], end=[0, 400], duration=600, object=self.ui.back_button,property="maximumSize", mode="OutExpo")
+        self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + icon_name), size=(20, 20)))
 
-        width = outItem.size().width()
-        height = outItem.size().height()
 
-        qtCore.animateWidgetSize(outItem, start=(width, height), end=(0, height), duration=600, attributelist=("maximumSize", "minimumSize"), bounce=False)
+    def change_state(self):
+        if self.expandingMode:
+            if self.window_state == "search":
+                self.window_state = "attributes"
+                # Get current size
+                outItem = self.ui.search_frame
+                inItem = self.ui.properties_frame
 
-        qtCore.animateWidgetSize(inItem, start=(0, height), end=(width, height), duration=600, attributelist=("maximumSize", "minimumSize"), expanding=True, bounce=False)
+                self.ui.back_button.setHidden(False)
+                qtCore.propertyAnimation(start=[0, 30], end=[30, 30], duration=600, object=self.ui.back_button, property="minimumSize", mode="OutExpo")
+                qtCore.propertyAnimation(start=[0, 30], end=[200, 200], duration=600, object=self.ui.back_button, property="maximumSize", mode="OutExpo")
+            else:
+                self.window_state = "search"
+                outItem = self.ui.properties_frame
+                inItem = self.ui.search_frame
+
+                qtCore.propertyAnimation(start=[30, 30], end=[0, 400], duration=600, object=self.ui.back_button,property="minimumSize", mode="OutExpo")
+                qtCore.propertyAnimation(start=[100, 30], end=[0, 400], duration=600, object=self.ui.back_button,property="maximumSize", mode="OutExpo")
+
+            width = outItem.size().width()
+            height = outItem.size().height()
+
+            qtCore.animateWidgetSize(outItem, start=(width, height), end=(0, height), duration=600, attributelist=("maximumSize", "minimumSize"), bounce=False)
+            qtCore.animateWidgetSize(inItem, start=(0, height), end=(width, height), duration=600, attributelist=("maximumSize", "minimumSize"), expanding=True, bounce=False)
+        else:
+            self.ui.properties_frame.setVisible(True)
+            self.ui.search_frame.setVisible(True)
+
+
 
     def changeListIndex(self, input):
         # Get current index from item
@@ -214,10 +291,10 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
     def load(self):
         '''Trigger loading and reloading of the window'''
         # Block signals and clear layout
-        reload(mayaCore)
+        #reload(base_library)
         self.get_functions()
         self.get_arguments()
-        reload(mayaCore)
+        #reload(base_library)
         self.get_arguments()
 
         self.filter_functions()
@@ -234,7 +311,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         function = [x for x in self.functionDictionary if x[1] == functionName][0][0]
 
         # Get arguments from UI
-        string = "mayaCore.{}(".format(functionName)
+        string = "{}.{}(".format(library_name, functionName)
         argumentList = {}
 
         missingArguments = []
@@ -461,10 +538,8 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                         valueObject.setChecked(True)
                 elif type(value) == tuple or type(value) == list:
                     # Extra validation to check the type of the list
-                    print len(value)
                     if len(value) == 3:
                         # Create Vector widget
-                        print "This is a vector input"
                         valueObject = qtCore.vectorInput(widget=self)
                         valueObject.set_values(value[0], value[1], value[2])
                     elif len(value) >= 4:
@@ -499,8 +574,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 for item in valueObjects[::-1]:
                     layout.addWidget(item)
 
-                print "FROM:", last_tab_object
-                print "TO:", valueObjects[0]
                 self.setTabOrder(last_tab_object, valueObjects[0])
                 last_tab_object = valueObjects[0]
 
@@ -536,7 +609,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 attributeLayout.addWidget(textLabel)
 
         # Set focus
-        print "SET FOCUS:", self.attribute_objects[0]
         self.attribute_objects[0].setFocus()
 
     def get_functions(self):
@@ -557,9 +629,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         # Get proper functions list
         functionList = []
-        for functionName in dir(mayaCore):
+        for functionName in dir(base_library):
             # Define function
-            function = getattr(mayaCore, functionName)
+            function = getattr(base_library, functionName)
             # Check path
             try:
                 path = inspect.getfile(function)
@@ -567,7 +639,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 path = None
 
             if path != None:
-                if "mayaCore" in path:
+                if library_name in path:
                     if "pyc" not in path:
                         if callable(function):
                             functionList.append(function)
@@ -625,9 +697,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
     def get_arguments(self):
         self.functionDictionary = []
-        for functionName in dir(mayaCore):
+        for functionName in dir(base_library):
             # Define function
-            function = getattr(mayaCore, functionName)
+            function = getattr(base_library, functionName)
             # Check if a path is accesable, if so it should be valid
             try:
                 path = inspect.getfile(function)
@@ -635,7 +707,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 path = None
 
             if path != None:
-                if "mayaCore" in path:
+                if library_name in path:
                     if "pyc" not in path:
                         if callable(function):
                             #Reload module
