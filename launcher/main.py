@@ -13,52 +13,60 @@ import prefs
 import imp
 import sys
 import pkgutil
-
+import mayaCore
 
 import glob
 
 relativePath = os.path.dirname(os.path.realpath(__file__)) + os.sep
 parentPath = os.path.abspath(os.path.join(relativePath, os.pardir))
 
+base_library = mayaCore
+library_name = "mayaCore"
 
-def load_library(library_path):
-    # Add to sys
-    if library_path not in sys.path:
-        sys.path.append(library_path)
+# def load_library(library_path):
+#     # Add to sys
+#     if library_path not in sys.path:
+#         sys.path.append(library_path)
+#
+#     global base_library
+#     global library_name
+#
+#     full_library_path = library_path + os.sep + "__init__.py"
+#     library_name = os.path.basename(library_path)
+#
+#     base_library = imp.load_source(library_name, full_library_path)
 
-    global base_library
-    global library_name
 
-    full_library_path = library_path + os.sep + "__init__.py"
-    library_name = os.path.basename(library_path)
-
-    base_library = imp.load_source(library_name, full_library_path)
-
-
-if prefs.get_library_path() != None:
-    load_library(prefs.get_library_path())
+#if prefs.get_library_path() != None:
+#    load_library(prefs.get_library_path())
 
 def show():
     '''Start an instance of the Function-finder UI'''
-    # Check preferences state
-    preference_state = prefs.check_prefs_state()
-    if preference_state:
-        library_path = prefs.get_library_path()
-    else:
-        library_path = qtCore.picker_dialog(mode="AnyDirectory", message="Choose a python-library folder")
-        if library_path:
-            prefs.create_preference_file(library_path=library_path)
-            load_library(library_path)
-        else:
-            print "No path provided"
+    # # Check preferences state
+    # preference_state = prefs.check_prefs_state()
+    # if preference_state:
+    #     library_path = prefs.get_library_path()
+    # else:
+    #     library_path = qtCore.picker_dialog(mode="AnyDirectory", message="Choose a python-library folder")
+    #     if library_path:
+    #         prefs.create_preference_file(library_path=library_path)
+    #         load_library(library_path)
+    #     else:
+    #         print "No path provided"
+    #
+    # if library_path:
+    #
+    #     # Launch an instance of the window
+    #     global bolt_launcher_instance
+    #     bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
+    #     # Show the window
+    #     bolt_launcher_instance.show(dockable=True, floating=True)
 
-    if library_path:
-
-        # Launch an instance of the window
-        global bolt_launcher_instance
-        bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
-        # Show the window
-        bolt_launcher_instance.show(dockable=True, floating=True)
+    # Launch an instance of the window
+    global bolt_launcher_instance
+    bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
+    # Show the window
+    bolt_launcher_instance.show(dockable=True, floating=True)
 
 
 class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
@@ -288,13 +296,13 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.ui.functionList.setCurrentItem(newItem)
             self.ui.functionList.blockSignals(False)
 
+
     def load(self):
-        '''Trigger loading and reloading of the window'''
         # Block signals and clear layout
-        #reload(base_library)
+        reload(mayaCore)
         self.get_functions()
         self.get_arguments()
-        #reload(base_library)
+        reload(mayaCore)
         self.get_arguments()
 
         self.filter_functions()
@@ -411,6 +419,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.change_state()
 
         # Create a layout for every input found
+        print len(self.functionDictionary)
         if len(self.functionDictionary) >= 1:
             self.arguments = []
             currentItem = self.ui.functionList.currentItem()
@@ -609,7 +618,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 attributeLayout.addWidget(textLabel)
 
         # Set focus
-        self.attribute_objects[0].setFocus()
+        #self.attribute_objects[0].setFocus()
 
     def get_functions(self):
         # Define old selection
@@ -697,9 +706,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
     def get_arguments(self):
         self.functionDictionary = []
-        for functionName in dir(base_library):
+        for functionName in dir(mayaCore):
             # Define function
-            function = getattr(base_library, functionName)
+            function = getattr(mayaCore, functionName)
             # Check if a path is accesable, if so it should be valid
             try:
                 path = inspect.getfile(function)
@@ -713,10 +722,13 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                             #Reload module
                             module = inspect.getmodule(function)
 
+
                             try: reload(module)
                             except Exception, errorMessage:
                                 print "ERROR: Problem loading", module
                                 print errorMessage
+
+
 
                             # Get specs
                             spec = inspect.getargspec(function)
@@ -733,9 +745,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                                 # Put the list together
                                 defaults.update(emptyValyes)
 
+                            #print "   - Default-Updated:", defaults
+
                             # Add to list
                             output = [function, function.__name__, function.__doc__, defaults]
                             self.functionDictionary.append(output)
         return self.functionDictionary
-
-
