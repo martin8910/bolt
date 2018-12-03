@@ -99,7 +99,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.setLayout(self.layout)
 
 
-
         # Window attributes
         self.dockedMode = False
         self.setWindowTitle("Bolt " + str(__version__))
@@ -120,8 +119,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         self.ui.back_button.setHidden(True)
 
-        self.setFocus()
-
         #Rightclick menu
 
         # Add keyboard shortcuts
@@ -131,6 +128,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "exspandOff.svg"), size=(20, 20)))
 
         self.ui.reloadButton.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "reload.svg"), size=(20, 20)))
+
+        self.ui.filterInput.setFocus()
+
 
     def keyPressEventDISABLED(self, event):
 
@@ -379,11 +379,15 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
                 # Get card content
                 card = item.data(109)
+                module = item.data(100)
 
                 # Continue if not a header
                 if "card_simple_ui" in str(type(card)):
                     if filterQuery not in card.getTitle().lower().replace(" ", ""):
-                        item.setHidden(True)
+                        if module.startswith(filterQuery):
+                            pass
+                        else:
+                            item.setHidden(True)
                     else:
                         filterList.append(item)
                         # Add name of headers to global
@@ -396,9 +400,16 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         for item in header_items:
             # Get card content
             card = item.data(109)
+            module = item.data(100)
 
-            if card.get_title().lower() in headerNames:
+            if module.startswith(filterQuery):
                 item.setHidden(False)
+            else:
+                if card.get_title().lower() in headerNames:
+                    item.setHidden(False)
+                else:
+                    pass
+
 
 
         # Set selected
@@ -672,6 +683,8 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 currentModule = moduleName
                 # Create header
                 header = qtCore.widgets.create_header(title=moduleName, layout=self.ui.functionList)
+                header.setData(100, moduleName)
+
             # Get info if exsits
             if function.__doc__ != None:
                 docInfo = function.__doc__
