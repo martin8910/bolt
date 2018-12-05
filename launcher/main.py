@@ -116,12 +116,17 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.ui.filterInput.textChanged.connect(self.filter_functions)
         self.ui.settings_button.clicked.connect(self.switch_exspanding_state)
 
-
         self.ui.back_button.setHidden(True)
+
+        # Set Exstended state
+        settings = QtCore.QSettings("DeerStranger", "Bolt")
+        #self.restoreGeometry(settings.value('geometry'))
+        if settings.value('expandingMode') == "true":
+            self.switch_exspanding_state()
+        self.add_attributes(change_state=False)
 
         #Rightclick menu
 
-        # Add keyboard shortcuts
         if self.expandingMode:
             self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "exspandOn.svg"), size=(20, 20)))
         else:
@@ -130,6 +135,33 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         self.ui.reloadButton.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + "reload.svg"), size=(20, 20)))
 
         self.ui.filterInput.setFocus()
+
+
+        # Add keyboard shortcuts
+
+        #QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Tab), self, self.execute)
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Return), self,self.enter_event)
+        QtWidgets.QShortcut(QtGui.QKeySequence("Down"), self, lambda: self.arrow_change(1))
+        QtWidgets.QShortcut(QtGui.QKeySequence("Up"), self, lambda: self.arrow_change(-1))
+        QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Left), self, self.left_event)
+
+
+
+
+    def arrow_change(self, number):
+        self.changeListIndex(number)
+        if self.expandingMode == False:
+            self.add_attributes()
+
+
+    def enter_event(self):
+        print "Enter event"
+        if self.expandingMode:
+            print "Adding Attributes"
+            self.add_attributes()
+
+    def left_event(self):
+        print "Left event"
 
 
     def keyPressEventDISABLED(self, event):
@@ -213,6 +245,10 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.expandingMode = True
             self.ui.properties_frame.setMaximumWidth(0)
 
+        settings = QtCore.QSettings("DeerStranger", "Bolt")
+        settings.setValue('geometry', self.saveGeometry())
+        settings.setValue('expandingMode', self.expandingMode)
+
         self.ui.settings_button.setIcon(qtCore.load_svg((relativePath + os.sep + "icons" + os.sep + icon_name), size=(20, 20)))
 
 
@@ -266,28 +302,33 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     hidden = True
                     while hidden == True:
                         newItem = self.ui.functionList.item(currentNumber + input)
-                        hidden = newItem.isHidden()
-                        if hidden == True:
-                            #input = input + input
-                            if input >= 1:
-                                input = input + 1
-                            else:
-                                input = input - 1
-                        else:
-                            # Check that not a header
-                            card = newItem.data(109)
-                            if "card_simple_ui" in str(type(card)):
-                                continue
-                            else:
-                                hidden = True
+                        #if newItem != None:
+                        try:
+                            hidden = newItem.isHidden()
+                            if hidden == True:
+                                #input = input + input
                                 if input >= 1:
                                     input = input + 1
                                 else:
                                     input = input - 1
-                                # if input == 1:
-                                #     input = input + input
-                                # else:
-                                #     input = input - 1
+                            else:
+                                # Check that not a header
+                                card = newItem.data(109)
+                                if "card_simple_ui" in str(type(card)):
+                                    continue
+                                else:
+                                    hidden = True
+                                    if input >= 1:
+                                        input = input + 1
+                                    else:
+                                        input = input - 1
+                                    # if input == 1:
+                                    #     input = input + input
+                                    # else:
+                                    #     input = input - 1
+                        except:
+                            hidden = False
+
 
                     # Check if new item is not a header
             if ((currentNumber + input) == -1):
