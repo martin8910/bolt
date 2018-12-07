@@ -471,7 +471,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.change_state()
 
         # Create a layout for every input found
-        print len(self.functionDictionary)
         if len(self.functionDictionary) >= 1:
             self.arguments = []
             currentItem = self.ui.functionList.currentItem()
