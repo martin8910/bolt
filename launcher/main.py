@@ -1,21 +1,16 @@
-__version__ = "0.5"
+__version__ = "0.6"
 __author__ = "Martin Gunnarsson (hello@deerstranger.com)"
 
 import qtCore
 from qtCore.external.Qt import QtWidgets, QtCore, QtGui
+import qtCore.context_maya
 
 reload(qtCore)
 reload(qtCore.animation)
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin, MayaQDockWidget
 import os, re
 import inspect
-import prefs
-import imp
-import sys
-import pkgutil
 import mayaCore
-
-import glob
 
 relativePath = os.path.dirname(os.path.realpath(__file__)) + os.sep
 parentPath = os.path.abspath(os.path.join(relativePath, os.pardir))
@@ -61,6 +56,34 @@ def show():
     #     bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
     #     # Show the window
     #     bolt_launcher_instance.show(dockable=True, floating=True)
+
+    # Launch an instance of the window
+    global bolt_launcher_instance
+    bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
+    # Show the window
+    bolt_launcher_instance.show(dockable=True, floating=True)
+
+def show_with_prefs():
+    '''Start an instance of the Function-finder UI'''
+    # Check preferences state
+    preference_state = prefs.check_prefs_state()
+    if preference_state:
+        library_path = prefs.get_library_path()
+    else:
+        library_path = qtCore.picker_dialog(mode="AnyDirectory", message="Choose a python-library folder")
+        if library_path:
+            prefs.create_preference_file(library_path=library_path)
+            load_library(library_path)
+        else:
+            print "No path provided"
+
+    if library_path:
+
+        # Launch an instance of the window
+        global bolt_launcher_instance
+        bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
+        # Show the window
+        bolt_launcher_instance.show(dockable=True, floating=True)
 
     # Launch an instance of the window
     global bolt_launcher_instance
@@ -424,7 +447,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
                 # Continue if not a header
                 if "card_simple_ui" in str(type(card)):
-                    if filterQuery not in card.getTitle().lower().replace(" ", ""):
+                    if filterQuery not in card.getTitle().lower().replace(" ", "").replace("_", ""):
                         if module.startswith(filterQuery):
                             pass
                         else:
@@ -458,6 +481,10 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             self.ui.functionList.blockSignals(True)
             self.ui.functionList.setCurrentItem(filterList[0])
             self.ui.functionList.blockSignals(False)
+
+            # Show the current selected if exspanding
+            if self.expandingMode == False:
+                self.add_attributes()
 
     def add_attributes(self, change_state=True):
         # Define attribute layout
