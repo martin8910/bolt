@@ -36,7 +36,7 @@ library_name = "mayaCore"
 #    load_library(prefs.get_library_path())
 
 def show():
-    '''Start an instance of the Function-finder UI'''
+    '''Start an instance of the BOLT UI'''
     # # Check preferences state
     # preference_state = prefs.check_prefs_state()
     # if preference_state:
@@ -426,7 +426,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         listWidget = self.ui.functionList
 
         # Get filter name
-        filterQuery = self.ui.filterInput.text().lower().replace(" ", "")
+        filterQuery = self.ui.filterInput.text().lower().replace(" ", "").replace("_", "")
 
         filterList = []
         headerNames = []
@@ -628,11 +628,13 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     if len(value) == 3:
                         # Create Vector widget
                         valueObject = qtCore.vectorInput(widget=self)
-                        valueObject.set_values(value[0], value[1], value[2])
+                        valueObject.set_values([value[0], value[1], value[2]])
+                        valueObject.setMinimumHeight(30)
                     elif len(value) >= 4:
                         # Create text input for list
                         valueObject = qtCore.vectorInput(widget=self)
-                        valueObject.set_values(value[0], value[1], value[2])
+                        valueObject.set_values([value[0], value[1], value[2]])
+                        valueObject.setMinimumHeight(30)
                     else:
                         valueObject = qtCore.valueButton()
                         valueObject.multiple = True
@@ -678,9 +680,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 self.arguments.append(valueObject)
 
                 # Add separator
-                #line = qtCore.QHLine()
+                line = qtCore.QHLine()
                 #line.set_style("Plane")
-                #attributeLayout.addWidget(line)
+                attributeLayout.addWidget(line)
 
                 self.attribute_objects.append(valueObject)
 

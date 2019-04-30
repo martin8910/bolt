@@ -5,7 +5,6 @@ import qtCore
 
 prefs_location = expanduser("~") + os.sep
 prefs_file = prefs_location + "bolt_preferences.json"
-print prefs_file
 
 def check_prefs_state():
     '''Return if a prefs exists or not'''
