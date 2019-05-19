@@ -651,6 +651,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     valueObject.setValue(value)
                 else:
                     valueObject = qtCore.valueButton()
+                    valueObject.multiple = False
                     valueObject.set_text("Single object")
                     # Create clicked method to update with the selection
                     valueObject.clicked.connect(valueObject.add_value)
