@@ -11,6 +11,7 @@ from maya.app.general.mayaMixin import MayaQWidgetDockableMixin, MayaQDockWidget
 import os, re
 import inspect
 import mayaCore
+import maya.cmds as cmds
 
 relativePath = os.path.dirname(os.path.realpath(__file__)) + os.sep
 parentPath = os.path.abspath(os.path.join(relativePath, os.pardir))
@@ -401,12 +402,12 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             argumentList.update({argument.objectName():value})
 
         if len(missingArguments) == 0:
-            #exec ("cmds.undoInfo(openChunk=True)")
+            exec ("cmds.undoInfo(openChunk=True)")
             output = function(**argumentList)
             #try: function(**argumentList)
             #except Exception, errorMessage:
             #    print "ERROR WHEN RUNNING FUNCTION '{}': \n{}".format(functionName, errorMessage)
-            #exec ("cmds.undoInfo(closeChunk=True)")
+            exec ("cmds.undoInfo(closeChunk=True)")
 
             #Reset UI if asked for
             if self.ui.resetOnRunCheckbox.isChecked():
