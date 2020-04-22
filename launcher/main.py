@@ -5,19 +5,20 @@ import qtCore
 from qtCore.external.Qt import QtWidgets, QtCore, QtGui
 import qtCore.context_maya
 
+import maya.cmds as cmds
+
 reload(qtCore)
 reload(qtCore.animation)
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin, MayaQDockWidget
 import os, re
 import inspect
-import mayaCore
-import maya.cmds as cmds
+import mCore
 
 relativePath = os.path.dirname(os.path.realpath(__file__)) + os.sep
 parentPath = os.path.abspath(os.path.join(relativePath, os.pardir))
 
-base_library = mayaCore
-library_name = "mayaCore"
+base_library = mCore
+library_name = "mCore"
 
 # def load_library(library_path):
 #     # Add to sys
@@ -133,6 +134,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         # Button connections
         self.ui.runButton.clicked.connect(self.run)
+        self.ui.printoutputButton.clicked.connect(self.print_output)
         self.ui.functionList.itemPressed.connect(self.add_attributes)
         self.ui.reloadButton.clicked.connect(self.load)
         self.ui.resetAssignment.clicked.connect(lambda: self.add_attributes(change_state=False))
@@ -364,17 +366,26 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
     def load(self):
         # Block signals and clear layout
-        reload(mayaCore)
+        reload(base_library)
         self.get_functions()
         self.get_arguments()
-        reload(mayaCore)
+        reload(base_library)
         self.get_arguments()
 
         self.filter_functions()
 
-    def run(self):
-        '''Exexute from current existed function'''
 
+    def print_output(self):
+        '''Print the output from the current functions'''
+        output = self.gather_attributes()
+
+        # Put together arguments
+
+        values = [str(x) + " = " + str(output["arguments"][x]) for x in output["arguments"]]
+
+        print "mCore." + output["function"].__name__ + "(" + ",".join(values) + ")"
+    def gather_attributes(self):
+        '''Gather all the attributes from a given layout and put together as an output'''
         # Get active function
         currentItem = self.ui.functionList.currentItem()
         card = currentItem.data(109)
@@ -395,15 +406,24 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
             # If required, check if it have a value
             value = qtCore.get_value(argument)
+            print "VALUE:", value
             if argument.property("required"):
                 # If no value
                 if value == None:
                     missingArguments.append(argument)
             argumentList.update({argument.objectName():value})
 
-        if len(missingArguments) == 0:
+        return {"function":function, "arguments":argumentList, "missing":missingArguments}
+
+
+    def run(self):
+        '''Exexute from current existed function'''
+        output = self.gather_attributes()
+
+
+        if len(output["missing"]) == 0:
             exec ("cmds.undoInfo(openChunk=True)")
-            output = function(**argumentList)
+            output = output["function"](**output["arguments"])
             #try: function(**argumentList)
             #except Exception, errorMessage:
             #    print "ERROR WHEN RUNNING FUNCTION '{}': \n{}".format(functionName, errorMessage)
@@ -414,7 +434,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 self.add_attributes()
 
         else:
-            for argument in missingArguments:
+            for argument in output["missing"]:
                 # Change label color
                 label = argument.property("label")
                 label.setStyleSheet("color: rgb(250,0,0)")
@@ -647,9 +667,12 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     valueObject = QtWidgets.QSpinBox()
                     valueObject.setValue(value)
                     valueObject.setMaximum(1000000000)
+                    valueObject.setMinimum(-1000000000)
                 elif type(value) == float:
                     valueObject = QtWidgets.QDoubleSpinBox()
                     valueObject.setValue(value)
+                    valueObject.setMaximum(1000000000)
+                    valueObject.setMinimum(-1000000000)
                 else:
                     valueObject = qtCore.valueButton()
                     valueObject.multiple = False
@@ -790,9 +813,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
     def get_arguments(self):
         self.functionDictionary = []
-        for functionName in dir(mayaCore):
+        for functionName in dir(base_library):
             # Define function
-            function = getattr(mayaCore, functionName)
+            function = getattr(base_library, functionName)
             # Check if a path is accesable, if so it should be valid
             try:
                 path = inspect.getfile(function)
