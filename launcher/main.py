@@ -383,7 +383,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         values = [str(x) + " = " + str(output["arguments"][x]) for x in output["arguments"]]
 
-        print "mCore." + output["function"].__name__ + "(" + ",".join(values) + ")"
+        print "mCore." + output["function"].__name__ + "(" + ", ".join(values) + ")"
     def gather_attributes(self):
         '''Gather all the attributes from a given layout and put together as an output'''
         # Get active function
