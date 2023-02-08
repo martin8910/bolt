@@ -1,4 +1,7 @@
-__version__ = "0.6"
+# coding=utf-8
+from __future__ import print_function, unicode_literals
+
+__version__ = "0.8"
 __author__ = "Martin Gunnarsson (hello@deerstranger.com)"
 
 import qtCore
@@ -19,7 +22,6 @@ parentPath = os.path.abspath(os.path.join(relativePath, os.pardir))
 
 base_library = mCore
 library_name = "mCore"
-
 # def load_library(library_path):
 #     # Add to sys
 #     if library_path not in sys.path:
@@ -77,8 +79,9 @@ def show_with_prefs():
             prefs.create_preference_file(library_path=library_path)
             load_library(library_path)
         else:
-            print "No path provided"
+            print("No path provided")
 
+    global bolt_launcher_instance
     if library_path:
 
         # Launch an instance of the window
@@ -88,7 +91,6 @@ def show_with_prefs():
         bolt_launcher_instance.show(dockable=True, floating=True)
 
     # Launch an instance of the window
-    global bolt_launcher_instance
     bolt_launcher_instance = main_window(parent=qtCore.context_maya.get_window())
     # Show the window
     bolt_launcher_instance.show(dockable=True, floating=True)
@@ -181,13 +183,11 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
 
     def enter_event(self):
-        print "Enter event"
         if self.expandingMode:
-            print "Adding Attributes"
             self.add_attributes()
 
     def left_event(self):
-        print "Left event"
+        print("Left event")
 
 
     def keyPressEventDISABLED(self, event):
@@ -196,11 +196,11 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         if self.expandingMode:
             if key == QtCore.Qt.Key_Left:
-                print "Left Key triggered"
+                print("Left Key triggered")
                 self.show_search()
             elif key == QtCore.Qt.Key_Right:
                 self.add_attributes()
-                print "Right Key triggered"
+                print("Right Key triggered")
             elif key == QtCore.Qt.Key_Down:
                 if self.ui.properties_frame.size().width() == 0:
                     self.ui.functionList.blockSignals(True)
@@ -208,7 +208,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     self.ui.functionList.blockSignals(False)
                     self.reset_text = True
                 else:
-                    print "Traverse properties frame down"
+                    print("Traverse properties frame down")
             elif key == QtCore.Qt.Key_Up:
                 if self.ui.properties_frame.size().width() == 0:
                     self.ui.functionList.blockSignals(True)
@@ -216,10 +216,10 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     self.ui.functionList.blockSignals(False)
                     self.reset_text = True
                 else:
-                    print "Traverse properties frame up"
+                    print("Traverse properties frame up")
 
             elif key == QtCore.Qt.Key_Return or key == QtCore.Qt.Key_Enter:
-                print "You pressed enter key"
+                print("You pressed enter key")
                 if self.ui.properties_frame.size().width() != 0:
                     self.run()
                 else:
@@ -238,7 +238,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 return event
         else:
             event.accept()
-            # print "Exspanding off"
             # if key == QtCore.Qt.Key_Up:
             #     self.changeListIndex(-1)
             #     self.add_attributes()
@@ -368,9 +367,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         # Block signals and clear layout
         reload(base_library)
         self.get_functions()
-        self.get_arguments()
+        self.get_arguments
         reload(base_library)
-        self.get_arguments()
+        self.get_arguments
 
         self.filter_functions()
 
@@ -383,7 +382,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         values = [str(x) + " = " + str(output["arguments"][x]) for x in output["arguments"]]
 
-        print "mCore." + output["function"].__name__ + "(" + ", ".join(values) + ")"
+        print("mCore." + output["function"].__name__ + "(" + ", ".join(values) + ")")
     def gather_attributes(self):
         '''Gather all the attributes from a given layout and put together as an output'''
         # Get active function
@@ -406,7 +405,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
             # If required, check if it have a value
             value = qtCore.get_value(argument)
-            print "VALUE:", value
             if argument.property("required"):
                 # If no value
                 if value == None:
@@ -811,6 +809,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
         return functionName
 
+    @property
     def get_arguments(self):
         self.functionDictionary = []
         for functionName in dir(base_library):
@@ -831,9 +830,9 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
 
                             try: reload(module)
-                            except Exception, errorMessage:
-                                print "ERROR: Problem loading", module
-                                print errorMessage
+                            except Exception as errorMessage:
+                                print("ERROR: Problem loading", module)
+                                print(errorMessage)
 
 
 
@@ -851,8 +850,6 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                                 emptyValyes = dict(zip(spec.args[:-len(defaults)], [None for value in spec.args[:-len(defaults)]]))
                                 # Put the list together
                                 defaults.update(emptyValyes)
-
-                            #print "   - Default-Updated:", defaults
 
                             # Add to list
                             output = [function, function.__name__, function.__doc__, defaults]
