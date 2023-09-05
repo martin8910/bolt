@@ -1,5 +1,6 @@
 # coding=utf-8
-from __future__ import print_function, unicode_literals
+
+from imp import reload
 
 __version__ = "0.8"
 __author__ = "Martin Gunnarsson (hello@deerstranger.com)"
@@ -10,8 +11,8 @@ import qtCore.context_maya
 
 import maya.cmds as cmds
 
-reload(qtCore)
-reload(qtCore.animation)
+#reload(qtCore)
+#reload(qtCore.animation)
 from maya.app.general.mayaMixin import MayaQWidgetDockableMixin, MayaQDockWidget
 import os, re
 import inspect
@@ -339,7 +340,8 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                             else:
                                 # Check that not a header
                                 card = newItem.data(109)
-                                if "card_simple_ui" in str(type(card)):
+                                #if "card_simple_ui" in str(type(card)):
+                                if "card_simple_ui" in card.__class__.__name__:
                                     continue
                                 else:
                                     hidden = True
@@ -450,7 +452,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
         filterList = []
         headerNames = []
         header_items = []
-        for number in xrange(listWidget.count()):
+        for number in range(listWidget.count()):
             # Get item
             item = listWidget.item(number)
 
@@ -462,10 +464,11 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
                 # Get card content
                 card = item.data(109)
-                module = item.data(100)
+                module = item.data(120)
 
                 # Continue if not a header
-                if "card_simple_ui" in str(type(card)):
+                #if "card_simple_ui" in str(type(card)):
+                if "card_simple_ui" in card.__class__.__name__:
                     if filterQuery not in card.getTitle().lower().replace(" ", "").replace("_", ""):
                         if module.startswith(filterQuery):
                             pass
@@ -474,24 +477,26 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     else:
                         filterList.append(item)
                         # Add name of headers to global
-                        headerNames.append(item.data(100))
+                        headerNames.append(item.data(120))
                 else:
                     # If header
                     item.setHidden(True)
                     header_items.append(item)
 
-        for item in header_items:
-            # Get card content
-            card = item.data(109)
-            module = item.data(100)
-
-            if module.startswith(filterQuery):
-                item.setHidden(False)
-            else:
-                if card.get_title().lower() in headerNames:
-                    item.setHidden(False)
-                else:
-                    pass
+        # for item in header_items:
+        #     # Get card content
+        #     card = item.data(109)
+        #     module = item.data(120)
+        #
+        #     print("MODULE:", module)
+        #
+        #     if module.startswith(filterQuery):
+        #         item.setHidden(False)
+        #     else:
+        #         if card.get_title().lower() in headerNames:
+        #             item.setHidden(False)
+        #         else:
+        #             pass
 
 
 
@@ -575,7 +580,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
 
             last_tab_object = None
 
-            for key, value in function[3].iteritems():
+            for key, value in function[3].items():
 
                 # Create layout
                 layout = QtWidgets.QHBoxLayout()
@@ -602,7 +607,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 valueObjects = []
 
                 # Check so its not none
-                if type(value) == str or type(value) == unicode:
+                if type(value) == str or type(value) == str:
                     # Special case for folders
                     if "file" in key:
                         valueObject = QtWidgets.QLineEdit()
@@ -755,6 +760,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                     if "pyc" not in path:
                         if callable(function):
                             functionList.append(function)
+                            print(function.__name__)
 
         # Sort functions by module
         sortedFunctionList = sorted(functionList, key=lambda function: inspect.getmodule(function).__file__.split(os.path.sep)[-1].split('.')[0])
@@ -775,7 +781,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
                 currentModule = moduleName
                 # Create header
                 header = qtCore.widgets.create_header(title=moduleName, layout=self.ui.functionList)
-                header.setData(100, moduleName)
+                header.setData(120, moduleName)
 
             # Get info if exsits
             if function.__doc__ != None:
@@ -787,7 +793,7 @@ class main_window(MayaQWidgetDockableMixin, QtWidgets.QDialog):
             # Create card
             item = qtCore.widgets.create_simple_card(title=function.__name__, height=20,layout=self.ui.functionList, info=docInfo)
             # Set data for header
-            item.setData(100, moduleName)
+            item.setData(120, moduleName)
 
 
         self.ui.functionList.setCurrentRow(1)
